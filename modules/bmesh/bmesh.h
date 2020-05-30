@@ -136,10 +136,11 @@ public:
 	}
 };
 
-struct BMeshAttributeType : public Reference {
-	GDCLASS(BMeshAttributeType, Reference);
+struct BMeshAttributeDefinition : public Reference {
+	GDCLASS(BMeshAttributeDefinition, Reference);
 
 public:
+	String name;
 	enum Type {
 		Int,
 		Float
@@ -148,7 +149,9 @@ public:
 	Type baseType;
 	int dimensions;
 
-	bool CheckValue(Variant value) const {
+	Variant defaultValue;
+
+	bool check_value(Variant value) const {
 		switch (baseType) {
 		case Int:
 		{
@@ -179,15 +182,12 @@ public:
 		}
 		return false;
 	}
-};
 
-struct BMeshAttributeDefinition : public Reference {
-	GDCLASS(BMeshAttributeDefinition, Reference);
-
-public:
-	String name;
-	Ref<BMeshAttributeType> type;
-	Variant defaultValue;
+	BMeshAttributeDefinition() {}
+	BMeshAttributeDefinition(String const& name, Type baseType, int dimensions)
+		: name(name), baseType(baseType), dimensions(dimensions) { }
+	BMeshAttributeDefinition(String const& name, Type baseType, int dimensions, Variant defaultValue)
+		: name(name), baseType(baseType), dimensions(dimensions), defaultValue(defaultValue) { }
 };
 
 class BMesh : public Mesh {
@@ -214,10 +214,10 @@ protected:
 	mutable Vector<Ref<BMeshLoop>> loops;
 	mutable Vector<Ref<BMeshFace>> faces;
 
-	mutable Vector<BMeshAttributeDefinition> vertexAttributes;
-	mutable Vector<BMeshAttributeDefinition> edgeAttributes;
-	mutable Vector<BMeshAttributeDefinition> loopAttributes;
-	mutable Vector<BMeshAttributeDefinition> faceAttributes;
+	mutable Vector<Ref<BMeshAttributeDefinition>> vertexAttributes;
+	mutable Vector<Ref<BMeshAttributeDefinition>> edgeAttributes;
+	mutable Vector<Ref<BMeshAttributeDefinition>> loopAttributes;
+	mutable Vector<Ref<BMeshAttributeDefinition>> faceAttributes;
 
     static void _bind_methods();
 
@@ -227,110 +227,110 @@ protected:
 
 public:
 
-	Vector<Ref<BMeshVertex>> const& GetVertices() const { return vertices; }
-	Vector<Ref<BMeshEdge>> const& GetEdges() const { return edges; }
-	Vector<Ref<BMeshLoop>> const& GetLoops() const { return loops; }
-	Vector<Ref<BMeshFace>> const& GetFaces() const { return faces; }
+	Vector<Ref<BMeshVertex>> const& get_vertices() const { return vertices; }
+	Vector<Ref<BMeshEdge>> const& get_edges() const { return edges; }
+	Vector<Ref<BMeshLoop>> const& get_loops() const { return loops; }
+	Vector<Ref<BMeshFace>> const& get_faces() const { return faces; }
 
-	Vector<BMeshAttributeDefinition> const& GetVertexAttributes() const { return vertexAttributes; }
-	Vector<BMeshAttributeDefinition> const& GetEdgeAttributes() const { return edgeAttributes; }
-	Vector<BMeshAttributeDefinition> const& GetLoopAttributes() const { return loopAttributes; }
-	Vector<BMeshAttributeDefinition> const& GetFaceAttributes() const { return faceAttributes; }
+	Vector<Ref<BMeshAttributeDefinition>> const& get_vertex_attributes() const { return vertexAttributes; }
+	Vector<Ref<BMeshAttributeDefinition>> const& get_edge_attributes() const { return edgeAttributes; }
+	Vector<Ref<BMeshAttributeDefinition>> const& get_loop_attributes() const { return loopAttributes; }
+	Vector<Ref<BMeshAttributeDefinition>> const& get_face_attributes() const { return faceAttributes; }
 
-	Ref<BMeshVertex> AddVertex(Ref<BMeshVertex> vert) {
-		EnsureVertexAttributes(vert);
+	Ref<BMeshVertex> add_vertex(Ref<BMeshVertex> vert) {
+		ensure_vertex_attributes(vert);
 		vertices.append(vert);
 		return vert;
 	}
-	Ref<BMeshVertex> AddVertex(Vector3 point) {
+	Ref<BMeshVertex> add_vertex(Vector3 point) {
 		Ref<BMeshVertex> vert(memnew(BMeshVertex(point)));
-		return AddVertex(vert);
+		return add_vertex(vert);
 	}
-	Ref<BMeshVertex> AddVertex(real_t x, real_t y, real_t z) {
-		return AddVertex(Vector3(x, y, z));
+	Ref<BMeshVertex> add_vertex(real_t x, real_t y, real_t z) {
+		return add_vertex(Vector3(x, y, z));
 	}
 
-	Ref<BMeshEdge> AddEdge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2);
-	Ref<BMeshEdge> AddEdge(int v1, int v2) {
+	Ref<BMeshEdge> add_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2);
+	Ref<BMeshEdge> add_edge(int v1, int v2) {
 		ERR_FAIL_INDEX_V(v1, vertices.size(), nullptr);
 		ERR_FAIL_INDEX_V(v2, vertices.size(), nullptr);
-		return AddEdge(vertices[v1], vertices[v2]);
+		return add_edge(vertices[v1], vertices[v2]);
 	}
 
-	Ref<BMeshFace> AddFace(Vector<Ref<BMeshVertex>> const& fVerts);
-	Ref<BMeshFace> AddFace(Ref<BMeshVertex> v0, Ref<BMeshVertex> v1, Ref<BMeshVertex> v2) {
+	Ref<BMeshFace> add_face(Vector<Ref<BMeshVertex>> const& fVerts);
+	Ref<BMeshFace> add_face(Ref<BMeshVertex> v0, Ref<BMeshVertex> v1, Ref<BMeshVertex> v2) {
 		Vector<Ref<BMeshVertex>> verts;
 		verts.push_back(v0);
 		verts.push_back(v1);
 		verts.push_back(v2);
-		return AddFace(verts);
+		return add_face(verts);
 	}
-	Ref<BMeshFace> AddFace(Ref<BMeshVertex> v0, Ref<BMeshVertex> v1, Ref<BMeshVertex> v2, Ref<BMeshVertex> v3) {
+	Ref<BMeshFace> add_face(Ref<BMeshVertex> v0, Ref<BMeshVertex> v1, Ref<BMeshVertex> v2, Ref<BMeshVertex> v3) {
 		Vector<Ref<BMeshVertex>> verts;
 		verts.push_back(v0);
 		verts.push_back(v1);
 		verts.push_back(v2);
 		verts.push_back(v3);
-		return AddFace(verts);
+		return add_face(verts);
 	}
-	Ref<BMeshFace> AddFace(int i0, int i1, int i2) {
+	Ref<BMeshFace> add_face(int i0, int i1, int i2) {
 		ERR_FAIL_INDEX_V(i0, vertices.size(), nullptr);
 		ERR_FAIL_INDEX_V(i1, vertices.size(), nullptr);
 		ERR_FAIL_INDEX_V(i2, vertices.size(), nullptr);
-		return AddFace(vertices[i0], vertices[i1], vertices[i2]);
+		return add_face(vertices[i0], vertices[i1], vertices[i2]);
 	}
-	Ref<BMeshFace> AddFace(int i0, int i1, int i2, int i3) {
+	Ref<BMeshFace> add_face(int i0, int i1, int i2, int i3) {
 		ERR_FAIL_INDEX_V(i0, vertices.size(), nullptr);
 		ERR_FAIL_INDEX_V(i1, vertices.size(), nullptr);
 		ERR_FAIL_INDEX_V(i2, vertices.size(), nullptr);
 		ERR_FAIL_INDEX_V(i3, vertices.size(), nullptr);
-		return AddFace(vertices[i0], vertices[i1], vertices[i2], vertices[i3]);
+		return add_face(vertices[i0], vertices[i1], vertices[i2], vertices[i3]);
 	}
 
-	Ref<BMeshEdge> FindEdge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2);
-	void RemoveVertex(Ref<BMeshVertex> v);
-	void RemoveEdge(Ref<BMeshEdge> e);
-	void RemoveLoop(Ref<BMeshLoop> l);
-	void RemoveFace(Ref<BMeshFace> f);
+	Ref<BMeshEdge> find_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2);
+	void remove_vertex(Ref<BMeshVertex> v);
+	void remove_edge(Ref<BMeshEdge> e);
+	void remove_loop(Ref<BMeshLoop> l);
+	void remove_face(Ref<BMeshFace> f);
 
-	bool HasVertexAttribute(String const& attribName) const;
-	bool HasVertexAttribute(Ref<BMeshAttributeDefinition> attrib) const {
-		return HasVertexAttribute(attrib->name);
+	bool has_vertex_attribute(String const& attribName) const;
+	bool has_vertex_attribute(Ref<BMeshAttributeDefinition> attrib) const {
+		return has_vertex_attribute(attrib->name);
 	}
-	Ref<BMeshAttributeDefinition> AddVertexAttribute(Ref<BMeshAttributeDefinition> attrib);
-	Ref<BMeshAttributeDefinition> AddVertexAttribute(String name, BMeshAttributeType::Type type, int dimensions);
+	Ref<BMeshAttributeDefinition> add_vertex_attribute(Ref<BMeshAttributeDefinition> attrib);
+	Ref<BMeshAttributeDefinition> add_vertex_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions);
 
-	void EnsureVertexAttributes(Ref<BMeshVertex> v);
+	void ensure_vertex_attributes(Ref<BMeshVertex> v);
 
 
-	bool HasEdgeAttribute(String attribName) const;
-	bool HasEdgeAttribute(Ref<BMeshAttributeDefinition> attrib) const {
-		return HasEdgeAttribute(attrib->name);
+	bool has_edge_attribute(String attribName) const;
+	bool has_edge_attribute(Ref<BMeshAttributeDefinition> attrib) const {
+		return has_edge_attribute(attrib->name);
 	}
-	Ref<BMeshAttributeDefinition> AddEdgeAttribute(Ref<BMeshAttributeDefinition> attrib);
-	Ref<BMeshAttributeDefinition> AddEdgeAttribute(String name, BMeshAttributeType::Type type, int dimensions);
+	Ref<BMeshAttributeDefinition> add_edge_attribute(Ref<BMeshAttributeDefinition> attrib);
+	Ref<BMeshAttributeDefinition> add_edge_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions);
 
-	void EnsureEdgeAttributes(Ref<BMeshEdge> e);
+	void ensure_edge_attributes(Ref<BMeshEdge> e);
 
 
-	bool HasLoopAttribute(String const& attribName) const;
-	bool HasLoopAttribute(Ref<BMeshAttributeDefinition> attrib) const {
-		return HasLoopAttribute(attrib->name);
+	bool has_loop_attribute(String const& attribName) const;
+	bool has_loop_attribute(Ref<BMeshAttributeDefinition> attrib) const {
+		return has_loop_attribute(attrib->name);
 	}
-	Ref<BMeshAttributeDefinition> AddLoopAttribute(Ref<BMeshAttributeDefinition> attrib);
-	Ref<BMeshAttributeDefinition> AddLoopAttribute(String name, BMeshAttributeType::Type type, int dimensions);
+	Ref<BMeshAttributeDefinition> add_loop_attribute(Ref<BMeshAttributeDefinition> attrib);
+	Ref<BMeshAttributeDefinition> add_loop_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions);
 
-	void EnsureLoopAttributes(Ref<BMeshLoop> l);
+	void ensure_loop_attributes(Ref<BMeshLoop> l);
 
 
-	bool HasFaceAttribute(String attribName) const;
-	bool HasFaceAttribute(Ref<BMeshAttributeDefinition> attrib) const {
-		return HasFaceAttribute(attrib->name);
+	bool has_face_attribute(String attribName) const;
+	bool has_face_attribute(Ref<BMeshAttributeDefinition> attrib) const {
+		return has_face_attribute(attrib->name);
 	}
-	Ref<BMeshAttributeDefinition> AddFaceAttribute(Ref<BMeshAttributeDefinition> attrib);
-	Ref<BMeshAttributeDefinition> AddFaceAttribute(String name, BMeshAttributeType::Type type, int dimensions);
+	Ref<BMeshAttributeDefinition> add_face_attribute(Ref<BMeshAttributeDefinition> attrib);
+	Ref<BMeshAttributeDefinition> add_face_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions);
 
-	void EnsureFaceAttributes(Ref<BMeshFace> f);
+	void ensure_face_attributes(Ref<BMeshFace> f);
 
 	void set_material(Ref<Material> const& mat);
 	Ref<Material> get_material() const { return material; }

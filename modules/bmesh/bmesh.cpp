@@ -24,9 +24,9 @@ void BMesh::_create_mesh_array(Array arr) {
 	uv1.resize(vertices.size());
 	uv2.resize(vertices.size());
 
-	bool has_uv1 = HasVertexAttribute("uv");
-	bool has_uv2 = HasVertexAttribute("uv2");
-	bool has_tangent = HasVertexAttribute("tangent");
+	bool has_uv1 = has_vertex_attribute("uv");
+	bool has_uv2 = has_vertex_attribute("uv2");
+	bool has_tangent = has_vertex_attribute("tangent");
 
 	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
 		Ref<BMeshVertex> vtx = vertices[i];
@@ -121,16 +121,16 @@ void BMesh::_update() const {
 	const_cast<BMesh *>(this)->emit_changed();
 }
 
-Ref<BMeshEdge> BMesh::AddEdge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
+Ref<BMeshEdge> BMesh::add_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
 	ERR_FAIL_COND_V_MSG(vert1 == vert2, Ref<BMeshEdge>(), "vertices must not be the same");
 
-	Ref<BMeshEdge> edge = FindEdge(vert1, vert2);
+	Ref<BMeshEdge> edge = find_edge(vert1, vert2);
 	if (edge.is_valid()) return edge;
 
 	edge.instance();
 	edge->vert1 = vert1;
 	edge->vert2 = vert2;
-	EnsureEdgeAttributes(edge);
+	ensure_edge_attributes(edge);
 	edges.append(edge);
 
 	if (vert1->edge.is_null()) {
@@ -158,7 +158,7 @@ Ref<BMeshEdge> BMesh::AddEdge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
 	return edge;
 }
 
-Ref<BMeshFace> BMesh::AddFace(Vector<Ref<BMeshVertex>> const & fVerts) {
+Ref<BMeshFace> BMesh::add_face(Vector<Ref<BMeshVertex>> const & fVerts) {
 	if (fVerts.empty()) return Ref<BMeshFace>();
 
 	for (size_t i = 0; i < fVerts.size(); i++) {
@@ -169,18 +169,18 @@ Ref<BMeshFace> BMesh::AddFace(Vector<Ref<BMeshVertex>> const & fVerts) {
 	fEdges.resize(fVerts.size());
 	size_t i, i_prev = fVerts.size() - 1;
 	for (i = 0; i < fVerts.size(); ++i) {
-		fEdges.set(i_prev, AddEdge(fVerts[i_prev], fVerts[i]));
+		fEdges.set(i_prev, add_edge(fVerts[i_prev], fVerts[i]));
 		i_prev = i;
 	}
 
 	Ref<BMeshFace> f;
 	f.instance();
-	EnsureFaceAttributes(f);
+	ensure_face_attributes(f);
 	faces.append(f);
 
 	for (i = 0; i < fVerts.size(); ++i) {
 		Ref<BMeshLoop> loop(memnew(BMeshLoop(fVerts[i], fEdges[i], f)));
-		EnsureLoopAttributes(loop);
+		ensure_loop_attributes(loop);
 		loops.append(loop);
 	}
 
@@ -302,14 +302,28 @@ Vector<Ref<BMeshEdge>> BMeshFace::NeighborEdges() const {
 	return edges;
 }
 
-void BMesh::EnsureFaceAttributes(Ref<BMeshFace> f) {
+Ref<BMeshAttributeDefinition> BMesh::add_face_attribute(Ref<BMeshAttributeDefinition> attrib) {
+	if (has_face_attribute(attrib->name)) return attrib;
+	faceAttributes.append(attrib);
+	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
+		Ref<BMeshVertex> vert = vertices[i];
+		vert->attributes[attrib->name] = attrib->defaultValue.duplicate();
+	}
+	return attrib;
+}
+
+Ref<BMeshAttributeDefinition> BMesh::add_face_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions) {
+	return add_face_attribute(memnew(BMeshAttributeDefinition(name, type, dimensions)));
+}
+
+void BMesh::ensure_face_attributes(Ref<BMeshFace> f) {
 	for (size_t i = 0, c = faceAttributes.size(); i < c; ++i) {
-		BMeshAttributeDefinition const& attr = faceAttributes[i];
-		if (!f->attributes.has(attr.name)) {
-			f->attributes[attr.name] = attr.defaultValue.duplicate();
-		} else if (!attr.type->CheckValue(f->attributes[attr.name])) {
+		Ref<BMeshAttributeDefinition> attr = faceAttributes[i];
+		if (!f->attributes.has(attr->name)) {
+			f->attributes[attr->name] = attr->defaultValue.duplicate();
+		} else if (!attr->check_value(f->attributes[attr->name])) {
 			WARN_PRINT("Face attribute not compatible with attribute definition, reverting to default value");
-			f->attributes[attr.name] = attr.defaultValue.duplicate();
+			f->attributes[attr->name] = attr->defaultValue.duplicate();
 		}
 	}
 }
@@ -356,8 +370,8 @@ Dictionary BMesh::surface_get_lods(int surface) const {
 
 uint32_t BMesh::surface_get_format(int surface) const {
 	ERR_FAIL_INDEX_V(surface, 1, 0);
-	uint32_t uv_flags = (HasVertexAttribute("uv") ? RS::ARRAY_FORMAT_TEX_UV : 0) | (HasVertexAttribute("uv2") ? RS::ARRAY_FORMAT_TEX_UV2 : 0);
-	uint32_t tangent_flags = (HasVertexAttribute("tangent") ? RS::ARRAY_FORMAT_TANGENT : 0);
+	uint32_t uv_flags = (has_vertex_attribute("uv") ? RS::ARRAY_FORMAT_TEX_UV : 0) | (has_vertex_attribute("uv2") ? RS::ARRAY_FORMAT_TEX_UV2 : 0);
+	uint32_t tangent_flags = (has_vertex_attribute("tangent") ? RS::ARRAY_FORMAT_TANGENT : 0);
 	return RS::ARRAY_FORMAT_VERTEX | RS::ARRAY_FORMAT_NORMAL | tangent_flags | uv_flags | RS::ARRAY_FORMAT_INDEX | RS::ARRAY_COMPRESS_DEFAULT;
 }
 
@@ -396,7 +410,7 @@ RID BMesh::get_rid() const {
 	return rid;
 }
 
-Ref<BMeshEdge> BMesh::FindEdge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2)
+Ref<BMeshEdge> BMesh::find_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2)
 {
 	CRASH_COND(vert1 == vert2);
 	if (vert1->edge.is_null() || vert2->edge.is_null()) return nullptr;
@@ -414,18 +428,18 @@ Ref<BMeshEdge> BMesh::FindEdge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2)
 	return nullptr;
 }
 
-void BMesh::RemoveVertex(Ref<BMeshVertex> v) {
+void BMesh::remove_vertex(Ref<BMeshVertex> v) {
 	while (v->edge.is_valid()) {
-		RemoveEdge(v->edge);
+		remove_edge(v->edge);
 	}
 
 	vertices.erase(v);
 	pending_update_request = true;
 }
 
-void BMesh::RemoveEdge(Ref<BMeshEdge> e) {
+void BMesh::remove_edge(Ref<BMeshEdge> e) {
 	while (e->loop.is_valid()) {
-		RemoveLoop(e->loop);
+		remove_loop(e->loop);
 	}
 
 	// remove edge references in vertices
@@ -443,9 +457,9 @@ void BMesh::RemoveEdge(Ref<BMeshEdge> e) {
 	pending_update_request = true;
 }
 
-void BMesh::RemoveLoop(Ref<BMeshLoop> l) {
+void BMesh::remove_loop(Ref<BMeshLoop> l) {
 	if (l->face.is_valid()) {
-		RemoveFace(l->face);
+		remove_face(l->face);
 		return;
 	}
 
@@ -466,85 +480,127 @@ void BMesh::RemoveLoop(Ref<BMeshLoop> l) {
 	pending_update_request = true;
 }
 
-void BMesh::RemoveFace(Ref<BMeshFace> f) {
+void BMesh::remove_face(Ref<BMeshFace> f) {
 	Ref<BMeshLoop> l = f->loop;
 	Ref<BMeshLoop> nextL = nullptr;
 	while (nextL != f->loop) {
 		nextL = l->next;
 		l->face = nullptr;
-		RemoveLoop(l);
+		remove_loop(l);
 		l = nextL;
 	}
 	faces.erase(f);
 	pending_update_request = true;
 }
 
-bool BMesh::HasVertexAttribute(String const& attribName) const {
+bool BMesh::has_vertex_attribute(String const& attribName) const {
 	for (size_t i = 0, c = vertexAttributes.size(); i < c; ++i) {
-		if (vertexAttributes[i].name == attribName) {
+		if (vertexAttributes[i]->name == attribName) {
 			return true;
 		}
 	}
 	return false;
 }
 
-void BMesh::EnsureVertexAttributes(Ref<BMeshVertex> v) {
+Ref<BMeshAttributeDefinition> BMesh::add_vertex_attribute(Ref<BMeshAttributeDefinition> attrib) {
+	if (has_vertex_attribute(attrib)) return attrib;
+	vertexAttributes.append(attrib);
+	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
+		Ref<BMeshVertex> vert = vertices[i];
+		vert->attributes[attrib->name] = attrib->defaultValue.duplicate();
+	}
+	return attrib;
+}
+
+Ref<BMeshAttributeDefinition> BMesh::add_vertex_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions) {
+	return add_vertex_attribute(memnew(BMeshAttributeDefinition(name, type, dimensions)));
+}
+
+void BMesh::ensure_vertex_attributes(Ref<BMeshVertex> v) {
 	for (size_t i = 0, c = vertexAttributes.size(); i < c; ++i) {
-		BMeshAttributeDefinition const& attr = vertexAttributes[i];
-		if (!v->attributes.has(attr.name)) {
-			v->attributes[attr.name] = attr.defaultValue.duplicate();
-		} else if (!attr.type->CheckValue(v->attributes[attr.name])) {
+		Ref<BMeshAttributeDefinition> attr = vertexAttributes[i];
+		if (!v->attributes.has(attr->name)) {
+			v->attributes[attr->name] = attr->defaultValue.duplicate();
+		} else if (!attr->check_value(v->attributes[attr->name])) {
 			WARN_PRINT("Vertex attribute not compatible with attribute definition, reverting to default value");
-			v->attributes[attr.name] = attr.defaultValue.duplicate();
+			v->attributes[attr->name] = attr->defaultValue.duplicate();
 		}
 	}
 }
 
-bool BMesh::HasEdgeAttribute(String attribName) const {
+bool BMesh::has_edge_attribute(String attribName) const {
 	for (size_t i = 0, c = edgeAttributes.size(); i < c; ++i) {
-		if (edgeAttributes[i].name == attribName) {
+		if (edgeAttributes[i]->name == attribName) {
 			return true;
 		}
 	}
 	return false;
 }
 
-void BMesh::EnsureEdgeAttributes(Ref<BMeshEdge> e) {
+Ref<BMeshAttributeDefinition> BMesh::add_edge_attribute(Ref<BMeshAttributeDefinition> attrib) {
+	if (has_edge_attribute(attrib->name)) return attrib;
+	edgeAttributes.append(attrib);
+	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
+		Ref<BMeshVertex> vert = vertices[i];
+		vert->attributes[attrib->name] = attrib->defaultValue.duplicate();
+	}
+	return attrib;
+}
+
+Ref<BMeshAttributeDefinition> BMesh::add_edge_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions) {
+	return add_edge_attribute(memnew(BMeshAttributeDefinition(name, type, dimensions)));
+}
+
+void BMesh::ensure_edge_attributes(Ref<BMeshEdge> e) {
 	for (size_t i = 0, c = edgeAttributes.size(); i < c; ++i) {
-		BMeshAttributeDefinition const& attr = edgeAttributes[i];
-		if (!e->attributes.has(attr.name)) {
-			e->attributes[attr.name] = attr.defaultValue.duplicate();
-		} else if (!attr.type->CheckValue(e->attributes[attr.name])) {
+		Ref<BMeshAttributeDefinition> attr = edgeAttributes[i];
+		if (!e->attributes.has(attr->name)) {
+			e->attributes[attr->name] = attr->defaultValue.duplicate();
+		} else if (!attr->check_value(e->attributes[attr->name])) {
 			WARN_PRINT("edge attribute not compatible with attribute definition, reverting to default value");
-			e->attributes[attr.name] = attr.defaultValue.duplicate();
+			e->attributes[attr->name] = attr->defaultValue.duplicate();
 		}
 	}
 }
 
-bool BMesh::HasLoopAttribute(String const & attribName) const {
+bool BMesh::has_loop_attribute(String const & attribName) const {
 	for (size_t i = 0, c = loopAttributes.size(); i < c; ++i) {
-		if (loopAttributes[i].name == attribName) {
+		if (loopAttributes[i]->name == attribName) {
 			return true;
 		}
 	}
 	return false;
 }
 
-void BMesh::EnsureLoopAttributes(Ref<BMeshLoop> l) {
+Ref<BMeshAttributeDefinition> BMesh::add_loop_attribute(Ref<BMeshAttributeDefinition> attrib) {
+	if (has_loop_attribute(attrib->name)) return attrib;
+	loopAttributes.append(attrib);
+	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
+		Ref<BMeshVertex> vert = vertices[i];
+		vert->attributes[attrib->name] = attrib->defaultValue.duplicate();
+	}
+	return attrib;
+}
+
+Ref<BMeshAttributeDefinition> BMesh::add_loop_attribute(String name, BMeshAttributeDefinition::Type type, int dimensions) {
+	return add_loop_attribute(memnew(BMeshAttributeDefinition(name, type, dimensions)));
+}
+
+void BMesh::ensure_loop_attributes(Ref<BMeshLoop> l) {
 	for (size_t i = 0, c = loopAttributes.size(); i < c; ++i) {
-		BMeshAttributeDefinition const& attr = loopAttributes[i];
-		if (!l->attributes.has(attr.name)) {
-			l->attributes[attr.name] = attr.defaultValue;
-		} else if (!attr.type->CheckValue(l->attributes[attr.name])) {
+		Ref<BMeshAttributeDefinition> attr = loopAttributes[i];
+		if (!l->attributes.has(attr->name)) {
+			l->attributes[attr->name] = attr->defaultValue;
+		} else if (!attr->check_value(l->attributes[attr->name])) {
 			WARN_PRINT("Loop attribute not compatible with attribute definition, reverting to default value");
-			l->attributes[attr.name] = attr.defaultValue;
+			l->attributes[attr->name] = attr->defaultValue;
 		}
 	}
 }
 
-bool BMesh::HasFaceAttribute(String attribName) const {
+bool BMesh::has_face_attribute(String attribName) const {
 	for (size_t i = 0, c = faceAttributes.size(); i < c; ++i) {
-		if (faceAttributes[i].name == attribName) {
+		if (faceAttributes[i]->name == attribName) {
 			return true;
 		}
 	}
