@@ -138,10 +138,10 @@ Ref<BMeshEdge> BMesh::add_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
 		edge->next1 = edge;
 		edge->prev1 = edge;
 	} else {
-		edge->next1 = vert1->edge->Next(*vert1);
+		edge->next1 = vert1->edge->get_next(*vert1);
 		edge->prev1 = vert1->edge;
-		edge->next1->SetPrev(*vert1, edge);
-		edge->prev1->SetNext(*vert1, edge);
+		edge->next1->set_prev(*vert1, edge);
+		edge->prev1->set_next(*vert1, edge);
 	}
 
 	if (vert2->edge.is_null()) {
@@ -149,10 +149,10 @@ Ref<BMeshEdge> BMesh::add_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
 		edge->next2 = edge;
 		edge->prev2 = edge;
 	} else {
-		edge->next2 = vert2->edge->Next(*vert2);
+		edge->next2 = vert2->edge->get_next(*vert2);
 		edge->prev2 = vert2->edge;
-		edge->next2->SetPrev(*vert2, edge);
-		edge->prev2->SetNext(*vert2, edge);
+		edge->next2->set_prev(*vert2, edge);
+		edge->prev2->set_next(*vert2, edge);
 	}
 
 	return edge;
@@ -200,31 +200,31 @@ BMesh::~BMesh() {
 	RenderingServer::get_singleton()->free(rid);
 }
 
-Vector<Ref<BMeshEdge>> BMeshVertex::NeighborEdges() const {
+Vector<Ref<BMeshEdge>> BMeshVertex::neighbor_edges() const {
 	Vector<Ref<BMeshEdge>> edges;
 	if (edge.is_valid()) {
 		Ref<BMeshEdge> it = edge;
 		do {
 			edges.append(it);
-			it = it->Next(this);
+			it = it->get_next(this);
 		} while (it != edge);
 	}
 	return edges;
 }
 
-Vector<Ref<BMeshFace>> BMeshVertex::NeighborFaces() const {
+Vector<Ref<BMeshFace>> BMeshVertex::neighbor_faces() const {
 	Vector<Ref<BMeshFace>> faces;
 	if (edge.is_valid()) {
 		Ref<BMeshEdge> it = edge;
 		do {
-			faces.append_array(it->NeighborFaces());
-			it = it->Next(this);
+			faces.append_array(it->neighbor_faces());
+			it = it->get_next(this);
 		} while (it != edge);
 	}
 	return faces;
 }
 
-inline Vector<Ref<BMeshFace>> BMeshEdge::NeighborFaces() const {
+inline Vector<Ref<BMeshFace>> BMeshEdge::neighbor_faces() const {
 	Vector<Ref<BMeshFace>> faces;
 	if (loop.is_valid()) {
 		Ref<BMeshLoop> it = loop;
@@ -236,7 +236,7 @@ inline Vector<Ref<BMeshFace>> BMeshEdge::NeighborFaces() const {
 	return faces;
 }
 
-void BMeshLoop::SetFace(Ref<BMeshFace> f) {
+void BMeshLoop::set_face(Ref<BMeshFace> f) {
 	CRASH_COND_MSG(f.is_null(), "face is invalid");
 
 	Ref<BMeshFace> thisref(this);
@@ -256,7 +256,7 @@ void BMeshLoop::SetFace(Ref<BMeshFace> f) {
 	face = f;
 }
 
-void BMeshLoop::SetEdge(Ref<BMeshEdge> e) {
+void BMeshLoop::set_edge(Ref<BMeshEdge> e) {
 	CRASH_COND_MSG(e.is_null(), "edge is invalid");
 
 	Ref<BMeshFace> thisref(this);
@@ -276,7 +276,7 @@ void BMeshLoop::SetEdge(Ref<BMeshEdge> e) {
 	edge = e;
 }
 
-Vector<Ref<BMeshVertex>> BMeshFace::NeighborVertices() const {
+Vector<Ref<BMeshVertex>> BMeshFace::neighbor_vertices() const {
 	Vector<Ref<BMeshVertex>> verts;
 
 	if (loop.is_valid()) {
@@ -289,7 +289,7 @@ Vector<Ref<BMeshVertex>> BMeshFace::NeighborVertices() const {
 	return verts;
 }
 
-Vector<Ref<BMeshEdge>> BMeshFace::NeighborEdges() const {
+Vector<Ref<BMeshEdge>> BMeshFace::neighbor_edges() const {
 	Vector<Ref<BMeshEdge>> edges;
 
 	if (loop.is_valid()) {
@@ -419,10 +419,10 @@ Ref<BMeshEdge> BMesh::find_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2)
 	Ref<BMeshEdge> e2 = vert2->edge;
 
 	do {
-		if (e1->ContainsVertex(*vert2)) return e1;
-		if (e2->ContainsVertex(*vert1)) return e2;
-		e1 = e1->Next(*vert1);
-		e2 = e2->Next(*vert2);
+		if (e1->contains_vertex(*vert2)) return e1;
+		if (e2->contains_vertex(*vert1)) return e2;
+		e1 = e1->get_next(*vert1);
+		e2 = e2->get_next(*vert2);
 	} while (e1 != vert1->edge && e2 != vert2->edge);
 
 	return nullptr;
@@ -447,11 +447,11 @@ void BMesh::remove_edge(Ref<BMeshEdge> e) {
 	if (e == e->vert2->edge) e->vert2->edge = (e->next2 != e) ? e->next2 : nullptr;
 
 	// remove from the linked lists
-	e->prev1->SetNext(*e->vert1, e->next1);
-	e->next1->SetPrev(*e->vert1, e->prev1);
+	e->prev1->set_next(*e->vert1, e->next1);
+	e->next1->set_prev(*e->vert1, e->prev1);
 
-	e->prev2->SetNext(*e->vert2, e->next2);
-	e->next2->SetPrev(*e->vert2, e->prev2);
+	e->prev2->set_next(*e->vert2, e->next2);
+	e->next2->set_prev(*e->vert2, e->prev2);
 
 	edges.erase(e);
 	pending_update_request = true;

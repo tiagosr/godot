@@ -18,8 +18,8 @@ public:
     Dictionary attributes;
     Ref<BMeshEdge> edge;
 
-	Vector<Ref<BMeshEdge>> NeighborEdges() const;
-	Vector<Ref<BMeshFace>> NeighborFaces() const;
+	Vector<Ref<BMeshEdge>> neighbor_edges() const;
+	Vector<Ref<BMeshFace>> neighbor_faces() const;
 
 	BMeshVertex() {}
 	explicit BMeshVertex(Vector3 const& p)
@@ -44,19 +44,19 @@ public:
     Ref<BMeshLoop> loop;
 
 
-	bool ContainsVertex(BMeshVertex const* v) const {
+	bool contains_vertex(BMeshVertex const* v) const {
 		CRASH_COND_MSG(v, "v is null!");
 		return v == vert1.ptr() || v == vert2.ptr();
 	}
-	Ref<BMeshVertex> OtherVertex(BMeshVertex const* v) const {
+	Ref<BMeshVertex> other_vertex(BMeshVertex const* v) const {
 		CRASH_COND_MSG(v, "v is null!");
 		return v == vert1.ptr() ? vert2 : vert1;
 	}
-	Ref<BMeshEdge> Next(BMeshVertex const* v) const {
+	Ref<BMeshEdge> get_next(BMeshVertex const* v) const {
 		CRASH_COND_MSG(v, "v is null!");
 		return v == vert1.ptr() ? next1 : next2;
 	}
-	void SetNext(BMeshVertex const* v, Ref<BMeshEdge> other) {
+	void set_next(BMeshVertex const* v, Ref<BMeshEdge> other) {
 		CRASH_COND_MSG(v, "v is null!");
 		if (v == vert1.ptr()) {
 			next1 = other;
@@ -65,11 +65,11 @@ public:
 		}
 	}
 
-	Ref<BMeshEdge> Prev(BMeshVertex const* v) const {
+	Ref<BMeshEdge> get_prev(BMeshVertex const* v) const {
 		CRASH_COND_MSG(v, "v is null!");
 		return v == vert1.ptr() ? prev1 : prev2;
 	}
-	void SetPrev(BMeshVertex const* v, Ref<BMeshEdge> other) {
+	void set_prev(BMeshVertex const* v, Ref<BMeshEdge> other) {
 		CRASH_COND_MSG(v, "v is null!");
 		if (v == vert1.ptr()) {
 			prev1 = other;
@@ -78,9 +78,9 @@ public:
 		}
 	}
 
-	Vector<Ref<BMeshFace>> NeighborFaces() const;
+	Vector<Ref<BMeshFace>> neighbor_faces() const;
 
-	Vector3 Center() {
+	Vector3 center() {
 		return (vert1->point + vert2->point) * 0.5f;
 	}
 };
@@ -101,15 +101,15 @@ public:
     Ref<BMeshLoop> prev;
     Ref<BMeshLoop> next;
 
-	void SetFace(Ref<BMeshFace> f);
-	void SetEdge(Ref<BMeshEdge> e);
+	void set_face(Ref<BMeshFace> f);
+	void set_edge(Ref<BMeshEdge> e);
 
 	BMeshLoop() {}
 
 	BMeshLoop(Ref<BMeshVertex> v, Ref<BMeshEdge> e, Ref<BMeshFace> f)
 	: vert(v) {
-		SetEdge(e);
-		SetFace(f);
+		set_edge(e);
+		set_face(f);
 	}
 };
 
@@ -122,12 +122,12 @@ public:
     int vertcount;
     Ref<BMeshLoop> loop;
 
-	Vector<Ref<BMeshVertex>> NeighborVertices() const;
-	Vector<Ref<BMeshEdge>> NeighborEdges() const;
-	Vector3 Center() const {
+	Vector<Ref<BMeshVertex>> neighbor_vertices() const;
+	Vector<Ref<BMeshEdge>> neighbor_edges() const;
+	Vector3 center() const {
 		Vector3 p(0.0f, 0.0f, 0.0f);
 		float sum = 0.0f;
-		Vector<Ref<BMeshVertex>> vertices = NeighborVertices();
+		Vector<Ref<BMeshVertex>> vertices = neighbor_vertices();
 		for (size_t i = 0; i < vertices.size(); i++) {
 			p += vertices[i]->point;
 			sum += 1.0f;
