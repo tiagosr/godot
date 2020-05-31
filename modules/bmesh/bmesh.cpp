@@ -11,22 +11,33 @@ void BMesh::_bind_methods() {
 
 }
 
-void BMesh::_create_mesh_array(Array arr) {
-	Vector<Vector3> points;
-	Vector<Vector3> normals;
-	Vector<float> tangents;
-	Vector<Vector2> uv1;
-	Vector<Vector2> uv2;
-	Vector<int> indices;
+void BMesh::_create_mesh_arrays(Array arrays) {
+	bool has_uv1 = has_vertex_attribute("uv");
+	bool has_uv2 = has_vertex_attribute("uv2");
+	bool has_normal = has_vertex_attribute("normal");
+	bool has_tangent = has_vertex_attribute("tangent");
+	bool has_material = has_vertex_attribute("materialId");
+	int max_materialId = 0;
+
+	if (has_material) {
+		for (size_t i = 0, c = faces.size(); i < c; ++i) {
+			int id = faces[i]->attributes.get("materialId", max_materialId);
+			max_materialId = MAX(max_materialId, id);
+		}
+	}
+
+	PackedVector3Array points;
+	PackedVector3Array normals;
+	PackedFloat32Array tangents;
+	PackedVector2Array uv1;
+	PackedVector2Array uv2;
 	static Variant zero_uv_var(Vector2(0.0f, 0.0f));
 
 	points.resize(vertices.size());
-	uv1.resize(vertices.size());
-	uv2.resize(vertices.size());
-
-	bool has_uv1 = has_vertex_attribute("uv");
-	bool has_uv2 = has_vertex_attribute("uv2");
-	bool has_tangent = has_vertex_attribute("tangent");
+	if (has_normal) normals.resize(vertices.size());
+	if (has_uv1) uv1.resize(vertices.size());
+	if (has_uv2) uv2.resize(vertices.size());
+	if (has_tangent) tangents.resize(vertices.size() * 4);
 
 	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
 		Ref<BMeshVertex> vtx = vertices[i];
@@ -53,10 +64,47 @@ void BMesh::_create_mesh_array(Array arr) {
 			uv2.set(i, Vector2(0, 0));
 		}
 	}
-	for (size_t i = 0, c = faces.size(); i < c; ++i) {
 
+	for (size_t i = 0; i <= max_materialId; ++i) {
+		Array arr;
+		arr.resize(RS::ARRAY_MAX);
+
+		Vector<int> indices;
+
+		for (size_t i = 0, c = faces.size(); i < c; ++i) {
+			Ref<BMeshFace> const& face = faces[i];
+			if (face->vertcount == 3) {
+				Ref<BMeshLoop> loop = face->loop;
+				int ti = indices.size();
+				indices.resize(ti + 3);
+				indices.set(ti + 0, loop->vert->id); loop = loop->next;
+				indices.set(ti + 2, loop->vert->id); loop = loop->next;
+				indices.set(ti + 1, loop->vert->id);
+			} else if (face->vertcount == 4) {
+				Ref<BMeshLoop> loop = face->loop;
+				int ti = indices.size();
+				indices.resize(ti + 6);
+				indices.set(ti + 0, loop->vert->id); loop = loop->next;
+				indices.set(ti + 2, loop->vert->id); loop = loop->next;
+				indices.set(ti + 1, loop->vert->id);
+				loop = face->loop->next->next;
+				indices.set(ti + 3, loop->vert->id); loop = loop->next;
+				indices.set(ti + 5, loop->vert->id); loop = loop->next;
+				indices.set(ti + 4, loop->vert->id);
+			} else {
+				WARN_PRINT("The current implementation of BMesh only supports faces with 3 or 4 vertices");
+			}
+		}
+
+		arr.set(RS::ARRAY_VERTEX, points);
+		arr.set(RS::ARRAY_NORMAL, normals);
+		arr.set(RS::ARRAY_TEX_UV, uv1);
+		arr.set(RS::ARRAY_TEX_UV2, uv2);
+		arr.set(RS::ARRAY_TANGENT, tangents);
+		arr.set(RS::ARRAY_INDEX, indices);
+
+		arrays.append(arr);
 	}
-
 }
 
 void BMesh::_request_update() {
@@ -67,53 +115,58 @@ void BMesh::_request_update() {
 }
 
 void BMesh::_update() const {
-	Array arr;
-	arr.resize(RS::ARRAY_MAX);
-	const_cast<BMesh*>(this)->_create_mesh_array(arr);
-
-	Vector<Vector3> points = arr[RS::ARRAY_VERTEX];
-	aabb = AABB();
-
-	size_t pc = points.size();
-	ERR_FAIL_COND(pc == 0);
-
-	Vector3 const* r = points.ptr();
-	for (size_t i = 0; i < pc; ++i) {
-		if (i == 0) {
-			aabb.position = r[i];
-		} else {
-			aabb.expand_to(r[i]);
-		}
-	}
-
-	Vector<int> indices = arr[RS::ARRAY_INDEX];
-
-	if (flip_faces) {
-		Vector<Vector3> normals = arr[RS::ARRAY_NORMAL];
-		if (normals.size() && indices.size()) {
-			size_t nc = normals.size();
-			Vector3* nw = normals.ptrw();
-			for (size_t i = 0; i < nc; ++i) {
-				// invert normals
-				nw[i] = -nw[i];
-			}
-
-			size_t ic = indices.size();
-			int* ni = indices.ptrw();
-			for (size_t i = 0; i < ic; i += 3) {
-				SWAP(nw[i + 0], nw[i + 1]);
-			}
-			arr[RS::ARRAY_NORMAL] = normals;
-			arr[RS::ARRAY_INDEX] = indices;
-		}
-	}
-
-	array_len = pc;
-	index_array_len = indices.size();
+	Array arrays;
+	const_cast<BMesh*>(this)->_create_mesh_arrays(arrays);
 
 	RenderingServer::get_singleton()->mesh_clear(rid);
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(rid, (RenderingServer::PrimitiveType)primitive_type, arr);
-	RenderingServer::get_singleton()->mesh_surface_set_material(rid, 0, material.is_null() ? RID() : material->get_rid());
+
+	size_t mc = mc = arrays.size();
+	index_array_len.resize(mc);
+
+	for (size_t mi = 0; mi < mc; ++mi) {
+		Array arr = arrays[mi];
+
+		PackedVector3Array points = arr[RS::ARRAY_VERTEX];
+		aabb = AABB();
+
+		size_t pc = points.size();
+		ERR_FAIL_COND(pc == 0);
+
+		Vector3 const* r = points.ptr();
+		for (size_t i = 0; i < pc; ++i) {
+			if (i == 0) {
+				aabb.position = r[i];
+			} else {
+				aabb.expand_to(r[i]);
+			}
+		}
+
+		Vector<int> indices = arr[RS::ARRAY_INDEX];
+
+		if (flip_faces) {
+			PackedVector3Array normals = arr[RS::ARRAY_NORMAL];
+			if (normals.size() && indices.size()) {
+				size_t nc = normals.size();
+				Vector3* nw = normals.ptrw();
+				for (size_t i = 0; i < nc; ++i) {
+					// invert normals
+					nw[i] = -nw[i];
+				}
+
+				size_t ic = indices.size();
+				int* ni = indices.ptrw();
+				for (size_t i = 0; i < ic; i += 3) {
+					SWAP(nw[i + 0], nw[i + 1]);
+				}
+				arr[RS::ARRAY_NORMAL] = normals;
+			}
+		}
+
+		array_len = pc;
+
+		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(rid, (RenderingServer::PrimitiveType)primitive_type, arr);
+		RenderingServer::get_singleton()->mesh_surface_set_material(rid, mi, ((materials.size() < mi) || materials[mi].is_null()) ? RID() : materials[mi]->get_rid());
+	}
 
 	pending_update_request = false;
 
@@ -329,17 +382,17 @@ void BMesh::ensure_face_attributes(Ref<BMeshFace> f) {
 }
 
 void BMesh::set_material(Ref<Material> const & mat) {
-	material = mat;
-	if (!pending_update_request) {
-		RenderingServer::get_singleton()->mesh_surface_set_material(rid, 0, material.is_null() ? RID() : material->get_rid());
-		_change_notify();
-		emit_changed();
-	}
+	surface_set_material(0, mat);
+}
+
+inline Ref<Material> BMesh::get_material() const {
+	if (pending_update_request) { _update(); }
+	return surface_get_material(0);
 }
 
 int BMesh::get_surface_count() const {
 	if (pending_update_request) { _update(); }
-	return 1;
+	return index_array_len.size();
 }
 
 int BMesh::surface_get_array_len(int surface) const {
@@ -349,15 +402,15 @@ int BMesh::surface_get_array_len(int surface) const {
 }
 
 int BMesh::surface_get_array_index_len(int surface) const {
-	ERR_FAIL_INDEX_V(surface, 1, -1);
+	ERR_FAIL_INDEX_V(surface, index_array_len.size(), -1);
 	if (pending_update_request) { _update(); }
-	return index_array_len;
+	return index_array_len[surface];
 }
 
 Array BMesh::surface_get_arrays(int surface) const {
-	ERR_FAIL_INDEX_V(surface, 1, Array());
+	ERR_FAIL_INDEX_V(surface, index_array_len.size(), Array());
 	if (pending_update_request) { _update(); }
-	return RenderingServer::get_singleton()->mesh_surface_get_arrays(rid, 0);
+	return RenderingServer::get_singleton()->mesh_surface_get_arrays(rid, surface);
 }
 
 Array BMesh::surface_get_blend_shape_arrays(int p_surface) const {
@@ -369,27 +422,36 @@ Dictionary BMesh::surface_get_lods(int surface) const {
 }
 
 uint32_t BMesh::surface_get_format(int surface) const {
-	ERR_FAIL_INDEX_V(surface, 1, 0);
-	uint32_t uv_flags = (has_vertex_attribute("uv") ? RS::ARRAY_FORMAT_TEX_UV : 0) | (has_vertex_attribute("uv2") ? RS::ARRAY_FORMAT_TEX_UV2 : 0);
-	uint32_t tangent_flags = (has_vertex_attribute("tangent") ? RS::ARRAY_FORMAT_TANGENT : 0);
-	return RS::ARRAY_FORMAT_VERTEX | RS::ARRAY_FORMAT_NORMAL | tangent_flags | uv_flags | RS::ARRAY_FORMAT_INDEX | RS::ARRAY_COMPRESS_DEFAULT;
+	ERR_FAIL_INDEX_V(surface, index_array_len.size(), 0);
+	bool has_uv1 = has_vertex_attribute("uv");
+	bool has_uv2 = has_vertex_attribute("uv2");
+	bool has_normal = has_vertex_attribute("normal");
+	bool has_tangent = has_vertex_attribute("tangent");
+
+	uint32_t uv_flags = (has_uv1 ? RS::ARRAY_FORMAT_TEX_UV : 0) | (has_uv2 ? RS::ARRAY_FORMAT_TEX_UV2 : 0);
+	uint32_t normal_tangent_flags = (has_normal ? RS::ARRAY_FORMAT_NORMAL : 0) |(has_tangent ? RS::ARRAY_FORMAT_TANGENT : 0);
+	return RS::ARRAY_FORMAT_VERTEX | normal_tangent_flags | uv_flags | RS::ARRAY_FORMAT_INDEX | RS::ARRAY_COMPRESS_DEFAULT;
 }
 
 Mesh::PrimitiveType BMesh::surface_get_primitive_type(int surface) const {
-	ERR_FAIL_INDEX_V(surface, 1, Mesh::PrimitiveType::PRIMITIVE_POINTS);
 	return primitive_type;
 }
 
 void BMesh::surface_set_material(int surface, Ref<Material> const & material) {
-	ERR_FAIL_INDEX(surface, 1);
-
-	set_material(material);
+	if (materials.size() <= surface) {
+		materials.resize(surface+1);
+	}
+	materials.set(0, material);
+	if (!pending_update_request) {
+		RenderingServer::get_singleton()->mesh_surface_set_material(rid, surface, material.is_null() ? RID() : material->get_rid());
+		_change_notify();
+		emit_changed();
+	}
 }
 
 Ref<Material> BMesh::surface_get_material(int surface) const {
-	ERR_FAIL_INDEX_V(surface, 1, nullptr);
-
-	return material;
+	ERR_FAIL_INDEX_V(surface, materials.size(), nullptr);
+	return materials[surface];
 }
 
 int BMesh::get_blend_shape_count() const {

@@ -197,7 +197,7 @@ protected:
 	RID rid;
 	Mesh::PrimitiveType primitive_type;
 
-	Ref<Material> material;
+	Vector<Ref<Material>> materials;
 
 	mutable AABB aabb;
 	AABB custom_aabb;
@@ -205,7 +205,7 @@ protected:
 	bool flip_faces;
 
 	mutable size_t array_len;
-	mutable size_t index_array_len;
+	mutable PackedInt32Array index_array_len;
 
 	mutable bool pending_update_request;
 
@@ -221,7 +221,7 @@ protected:
 
     static void _bind_methods();
 
-	virtual void _create_mesh_array(Array arr);
+	virtual void _create_mesh_arrays(Array arrays);
 	void _request_update();
 	void _update() const;
 
@@ -333,7 +333,7 @@ public:
 	void ensure_face_attributes(Ref<BMeshFace> f);
 
 	void set_material(Ref<Material> const& mat);
-	Ref<Material> get_material() const { return material; }
+	Ref<Material> get_material() const;
 
 	// Mesh
 	virtual int get_surface_count() const override;
