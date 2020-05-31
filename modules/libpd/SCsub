@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_libpd = env_modules.Clone()
+
+if True:
+    env_libpd.Prepend(CPPPATH=["#thirdparty/libpd"])
+    env_libpd.Prepend(CPPPATH=["#thirdparty/libpd/src"])
+    env_libpd.Prepend(CPPPATH=["#thirdparty/libpd/extra"])
+    env_libpd.Prepend(CPPPATH=["#thirdparty/libpd/libpd_wrapper"])
+    env_libpd.Prepend(CPPPATH=["#thirdparty/libpd/cpp"])
+
+    if env["platform"] == "windows":
+        env_libpd.Prepend(CPPPATH=["#thirdparty/pthreads-w32"])
+        env_libpd.Append(CPPDEFINES=["HAVE_STRUCT_TIMESPEC"])
+    env_libpd.Append(CPPDEFINES=["PD", "PD_INTERNAL", "USEAPI_DUMMY"])
+
+    env_thirdparty = env_libpd.Clone()
+    env_thirdparty.disable_warnings()
+    env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/libpd/src/*.c"))
+    env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/libpd/extra/*/*.c"))
+    env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/libpd/libpd_wrapper/*.c"))
+    env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/libpd/cpp/*.c"))
+    env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/libpd/cpp/*.cpp"))
+    if env["platform"] == "windows":
+        env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/pthreads-w32/*.c"))
+
+# Godot's own source files
+env_libpd.add_source_files(env.modules_sources, "*.cpp")
+
+
+

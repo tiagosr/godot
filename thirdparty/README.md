@@ -205,6 +205,20 @@ Files extracted from upstream source:
 - COPYING
 
 
+## libpd
+
+- Upstream: https://github.com/libpd/libpd
+- Version: git (3fd9b7fc43fa8cf82e60339e6b6568f61eda0f88, 2020)
+- License: BSD-3-Clause
+
+Files extracted from upstream source:
+
+- `libpd_wrapper/*.{c,h}`
+- `libpd_wrapper/util/*.{c,h}`
+- `cpp/*.{cpp,h}`
+- `src/*.{c,h}` in pure-data/
+
+
 ## libpng
 
 - Upstream: http://libpng.org/pub/png/libpng.html
