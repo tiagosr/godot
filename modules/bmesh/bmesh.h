@@ -83,6 +83,8 @@ public:
 	Vector3 center() {
 		return (vert1->point + vert2->point) * 0.5f;
 	}
+
+	size_t fill_lines_vector3_array(PackedVector3Array& p_array, size_t p_offset) const;
 };
 
 struct BMeshLoop : public Reference {
@@ -111,6 +113,9 @@ public:
 		set_edge(e);
 		set_face(f);
 	}
+
+	size_t get_loop_edges_count() const;
+	size_t fill_lines_vector3_array(PackedVector3Array& p_array, size_t p_offset) const;
 };
 
 struct BMeshFace : public Reference {
@@ -134,6 +139,18 @@ public:
 		}
 		return p / sum;
 	}
+
+	size_t get_triangles_count() const {
+		switch (vertcount) {
+		case 3:
+			return 1;
+		case 4:
+			return 2;
+		}
+		// unsupported vertcount value
+		return 0;
+	}
+	size_t fill_triangles_vector3_array(PackedVector3Array& p_array, size_t p_offset) const;
 };
 
 struct BMeshAttributeDefinition : public Reference {
@@ -351,6 +368,9 @@ public:
 	virtual AABB get_aabb() const override;
 	virtual RID get_rid() const override;
 	// ~Mesh
+
+	size_t get_num_tris() const;
+	size_t generate_tris(PackedVector3Array& p_array, size_t p_offset) const;
 
     BMesh();
 	~BMesh();

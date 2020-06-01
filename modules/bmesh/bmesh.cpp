@@ -74,11 +74,11 @@ void BMesh::_create_mesh_arrays(Array arrays) {
 		for (size_t i = 0, c = faces.size(); i < c; ++i) {
 			Ref<BMeshFace> const& face = faces[i];
 			if (face->vertcount == 3) {
-				Ref<BMeshLoop> loop = face->loop;
+				BMeshLoop const* loop = face->loop.ptr();
 				int ti = indices.size();
 				indices.resize(ti + 3);
-				indices.set(ti + 0, loop->vert->id); loop = loop->next;
-				indices.set(ti + 2, loop->vert->id); loop = loop->next;
+				indices.set(ti + 0, loop->vert->id); loop = loop->next.ptr();
+				indices.set(ti + 2, loop->vert->id); loop = loop->next.ptr();
 				indices.set(ti + 1, loop->vert->id);
 			} else if (face->vertcount == 4) {
 				Ref<BMeshLoop> loop = face->loop;
@@ -87,7 +87,7 @@ void BMesh::_create_mesh_arrays(Array arrays) {
 				indices.set(ti + 0, loop->vert->id); loop = loop->next;
 				indices.set(ti + 2, loop->vert->id); loop = loop->next;
 				indices.set(ti + 1, loop->vert->id);
-				loop = face->loop->next->next;
+				//loop = face->loop->next->next;
 				indices.set(ti + 3, loop->vert->id); loop = loop->next;
 				indices.set(ti + 5, loop->vert->id); loop = loop->next;
 				indices.set(ti + 4, loop->vert->id);
@@ -289,6 +289,12 @@ inline Vector<Ref<BMeshFace>> BMeshEdge::neighbor_faces() const {
 	return faces;
 }
 
+size_t BMeshEdge::fill_lines_vector3_array(PackedVector3Array & p_array, size_t p_offset) const {
+	p_array.write[p_offset + 0] = vert1->point;
+	p_array.write[p_offset + 1] = vert2->point;
+	return 2;
+}
+
 void BMeshLoop::set_face(Ref<BMeshFace> f) {
 	CRASH_COND_MSG(f.is_null(), "face is invalid");
 
@@ -329,6 +335,28 @@ void BMeshLoop::set_edge(Ref<BMeshEdge> e) {
 	edge = e;
 }
 
+size_t BMeshLoop::get_loop_edges_count() const {
+	BMeshLoop const* loop = this;
+	size_t edges = 0;
+	do {
+		edges++;
+		loop = loop->next.ptr();
+	} while (loop != this);
+	return edges;
+}
+
+size_t BMeshLoop::fill_lines_vector3_array(PackedVector3Array & p_array, size_t p_offset) const {
+	BMeshLoop const* loop = this;
+	size_t vertices = 0;
+	do {
+		p_array.write[p_offset + vertices + 0] = loop->edge->vert1->point;
+		p_array.write[p_offset + vertices + 1] = loop->edge->vert2->point;
+		vertices+=2;
+		loop = loop->next.ptr();
+	} while (loop != this);
+	return vertices;
+}
+
 Vector<Ref<BMeshVertex>> BMeshFace::neighbor_vertices() const {
 	Vector<Ref<BMeshVertex>> verts;
 
@@ -353,6 +381,26 @@ Vector<Ref<BMeshEdge>> BMeshFace::neighbor_edges() const {
 		} while (it != loop);
 	}
 	return edges;
+}
+
+size_t BMeshFace::fill_triangles_vector3_array(PackedVector3Array & p_array, size_t p_offset) const {
+	if (vertcount == 3) {
+		BMeshLoop const* iloop = loop.ptr();
+		p_array.write[p_offset + 0] = iloop->vert->point; iloop = iloop->next.ptr();
+		p_array.write[p_offset + 2] = iloop->vert->point; iloop = iloop->next.ptr();
+		p_array.write[p_offset + 1] = iloop->vert->point;
+		return 3;
+	} else if (vertcount == 4) {
+		BMeshLoop const* iloop = loop.ptr();
+		p_array.write[p_offset + 0] = iloop->vert->point; iloop = iloop->next.ptr();
+		p_array.write[p_offset + 2] = iloop->vert->point; iloop = iloop->next.ptr();
+		p_array.write[p_offset + 1] = iloop->vert->point;
+		p_array.write[p_offset + 3] = iloop->vert->point; iloop = iloop->next.ptr();
+		p_array.write[p_offset + 5] = iloop->vert->point; iloop = iloop->next.ptr();
+		p_array.write[p_offset + 4] = iloop->vert->point;
+		return 6;
+	}
+	return 0;
 }
 
 Ref<BMeshAttributeDefinition> BMesh::add_face_attribute(Ref<BMeshAttributeDefinition> attrib) {
@@ -470,6 +518,23 @@ AABB BMesh::get_aabb() const {
 RID BMesh::get_rid() const {
 	if (pending_update_request) { _update(); }
 	return rid;
+}
+
+size_t BMesh::get_num_tris() const {
+	size_t count = 0;
+	for (size_t i = 0, c = faces.size(); i < c; ++i) {
+		count += faces[i]->get_triangles_count();
+	}
+	return count;
+}
+
+size_t BMesh::generate_tris(PackedVector3Array & p_array, size_t p_offset) const {
+	size_t vert_count = 0;
+	for (size_t i = 0, c = faces.size(); i < c; ++i) {
+
+		vert_count += faces[i]->fill_triangles_vector3_array(p_array, p_offset + vert_count);
+	}
+	return vert_count;
 }
 
 Ref<BMeshEdge> BMesh::find_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2)
