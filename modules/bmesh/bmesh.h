@@ -80,8 +80,14 @@ public:
 
 	Vector<Ref<BMeshFace>> neighbor_faces() const;
 
-	Vector3 center() {
+	Vector3 center() const {
 		return (vert1->point + vert2->point) * 0.5f;
+	}
+
+	void set_center(Vector3 const& new_center) {
+		Vector3 offset = new_center - center();
+		vert1->point += offset;
+		vert2->point += offset;
 	}
 
 	size_t fill_lines_vector3_array(PackedVector3Array& p_array, size_t p_offset) const;
@@ -242,6 +248,56 @@ protected:
 	void _request_update();
 	void _update() const;
 
+	Ref<BMeshVertex> _add_vertex(Variant const& point) { return add_vertex((Vector3)point); }
+	Ref<BMeshEdge> _add_edge(Variant const& v1, Variant const& v2) {
+		if ((v1.get_type() == Variant::Type::INT) && (v2.get_type() == Variant::Type::INT)) {
+			return add_edge((int)v1, (int)v2);
+		} else {
+			return add_edge(Ref<BMeshVertex>(v1), Ref<BMeshVertex>(v2));
+		}
+	}
+
+	Variant _add_face(Variant const** p_args, int p_argcount, Callable::CallError& r_error) {
+		if ((p_argcount == 1) && p_args[0]->is_array()) {
+			Array const& arr(*p_args[0]);
+			Vector<Ref<BMeshVertex>> vertices;
+			vertices.resize(arr.size());
+			for (size_t i = 0, c = arr.size(); i < c; ++i) {
+				vertices.write[i] = Ref<BMeshVertex>(arr[i]);
+			}
+			return add_face(vertices);
+		} else if (p_argcount == 3) { // only 3 arguments
+			if ((p_args[0]->get_type() == Variant::Type::INT) &&
+				(p_args[1]->get_type() == Variant::Type::INT) &&
+				(p_args[2]->get_type() == Variant::Type::INT)) {
+				return add_face(
+					p_args[0]->operator int(),
+					p_args[1]->operator int(),
+					p_args[2]->operator int());
+			} else {
+				return add_face(Ref<BMeshVertex>(p_args[0]), Ref<BMeshVertex>(p_args[1]), Ref<BMeshVertex>(p_args[2]));
+			}
+		} else if (p_argcount == 4) {
+			if ((p_args[0]->get_type() == Variant::Type::INT) &&
+				(p_args[1]->get_type() == Variant::Type::INT) &&
+				(p_args[2]->get_type() == Variant::Type::INT) &&
+				(p_args[3]->get_type() == Variant::Type::INT)) {
+				return add_face(
+					p_args[0]->operator int(),
+					p_args[1]->operator int(),
+					p_args[2]->operator int(),
+					p_args[3]->operator int());
+			} else {
+				return add_face(
+					Ref<BMeshVertex>(p_args[0]),
+					Ref<BMeshVertex>(p_args[1]),
+					Ref<BMeshVertex>(p_args[2]),
+					Ref<BMeshVertex>(p_args[3]));
+			}
+		}
+		return Variant();
+	}
+
 public:
 
 	Vector<Ref<BMeshVertex>> const& get_vertices() const { return vertices; }
@@ -253,6 +309,14 @@ public:
 	Vector<Ref<BMeshAttributeDefinition>> const& get_edge_attributes() const { return edgeAttributes; }
 	Vector<Ref<BMeshAttributeDefinition>> const& get_loop_attributes() const { return loopAttributes; }
 	Vector<Ref<BMeshAttributeDefinition>> const& get_face_attributes() const { return faceAttributes; }
+
+	void set_vertex(int p_idx, Vector3 const& p_vec);
+	Vector3 get_vertex(int p_idx) const { return vertices[p_idx]->point; }
+
+	void set_vertex_attribute(int p_idx, String const& p_attr, Variant const& p_value);
+	Variant get_vertex_attribute(int p_idx, String const& p_attr) const {
+		return vertices[p_idx]->attributes[p_attr];
+	}
 
 	Ref<BMeshVertex> add_vertex(Ref<BMeshVertex> vert) {
 		ensure_vertex_attributes(vert);

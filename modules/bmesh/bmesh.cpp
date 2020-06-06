@@ -9,6 +9,19 @@ void BMesh::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "material", PROPERTY_HINT_RESOURCE_TYPE, "StandardMaterial3D,ShaderMaterial"), "set_material", "get_material");
 
+	ClassDB::bind_method(D_METHOD("set_vertex"), &BMesh::set_vertex);
+	ClassDB::bind_method(D_METHOD("get_vertex"), &BMesh::get_vertex);
+
+	ClassDB::bind_method(D_METHOD("set_vertex_attribute"), &BMesh::set_vertex_attribute);
+	ClassDB::bind_method(D_METHOD("get_vertex_attribute"), &BMesh::get_vertex_attribute);
+
+	ClassDB::bind_method(D_METHOD("add_vertex"), &BMesh::_add_vertex);
+	ClassDB::bind_method(D_METHOD("add_edge"), &BMesh::_add_edge);
+	ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "add_face", &BMesh::_add_face, MethodInfo("add_face"));
+
+	ClassDB::bind_method(D_METHOD("find_edge"), &BMesh::find_edge);
+
+
 }
 
 void BMesh::_create_mesh_arrays(Array arrays) {
@@ -42,7 +55,7 @@ void BMesh::_create_mesh_arrays(Array arrays) {
 	for (size_t i = 0, c = vertices.size(); i < c; ++i) {
 		Ref<BMeshVertex> vtx = vertices[i];
 		vtx->id = i;
-		points.set(i, vtx->point);
+		points.write[i] = vtx->point;
 		if (has_uv1) {
 			Variant v = vtx->attributes.get("uv", zero_uv_var);
 			if (v.get_type() == Variant::Type::VECTOR2) {
@@ -63,6 +76,10 @@ void BMesh::_create_mesh_arrays(Array arrays) {
 		} else {
 			uv2.set(i, Vector2(0, 0));
 		}
+	}
+
+	for (size_t i = 0, c = faces.size(); i < c; ++i) {
+		faces.write[i]->id = i;
 	}
 
 	for (size_t i = 0; i <= max_materialId; ++i) {
@@ -174,6 +191,16 @@ void BMesh::_update() const {
 	const_cast<BMesh *>(this)->emit_changed();
 }
 
+inline void BMesh::set_vertex(int p_idx, Vector3 const & p_vec) {
+	vertices.write[p_idx]->point = p_vec;
+	pending_update_request = true;
+}
+
+inline void BMesh::set_vertex_attribute(int p_idx, String const & p_attr, Variant const & p_value) {
+	vertices.write[p_idx]->attributes[p_attr] = p_value;
+	pending_update_request = true;
+}
+
 Ref<BMeshEdge> BMesh::add_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
 	ERR_FAIL_COND_V_MSG(vert1 == vert2, Ref<BMeshEdge>(), "vertices must not be the same");
 
@@ -208,6 +235,8 @@ Ref<BMeshEdge> BMesh::add_edge(Ref<BMeshVertex> vert1, Ref<BMeshVertex> vert2) {
 		edge->prev2->set_next(*vert2, edge);
 	}
 
+	pending_update_request = true;
+
 	return edge;
 }
 
@@ -238,6 +267,9 @@ Ref<BMeshFace> BMesh::add_face(Vector<Ref<BMeshVertex>> const & fVerts) {
 	}
 
 	f->vertcount = fVerts.size();
+
+	pending_update_request = true;
+
 	return f;
 }
 

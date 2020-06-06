@@ -2,6 +2,7 @@
 #define BMESH_GIZMOS_H
 
 #include "bmesh.h"
+#include "bmesh_instance.h"
 #include "editor/editor_plugin.h"
 #include "editor/node_3d_editor_gizmos.h"
 
@@ -19,8 +20,9 @@ protected:
 		LOOPS,
 		FACES
 	};
-	GizmoEditMode editMode;
-	GizmoElementMode elementMode;
+	GizmoEditMode edit_mode;
+	GizmoElementMode element_mode;
+	String attribute_name;
 	
 	PackedInt32Array selected_vertex_indices;
 	PackedInt32Array selected_edge_indices;
@@ -38,14 +40,49 @@ public:
 	virtual void set_handle(EditorNode3DGizmo* p_gizmo, int p_idx, Camera3D* p_camera, Point2 const& p_point) override;
 	virtual void commit_handle(EditorNode3DGizmo* p_gizmo, int p_idx, Variant const& p_restore, bool p_cancel) override;
 
-    BMesh3DGizmoPlugin();
+	BMesh3DGizmoPlugin();
 };
 
-class EditorPluginBMesh : public EditorPlugin {
-    GDCLASS(EditorPluginBMesh, EditorPlugin);
+class BMeshEditorPlugin : public EditorPlugin {
+    GDCLASS(BMeshEditorPlugin, EditorPlugin);
 
+private:
+	BMeshInstance3D* mesh_instance;
+	BMesh* mesh;
+
+	Separator* sep_1;
+	ToolButton* btn_mesh_edit_pos;
+	ToolButton* btn_mesh_edit_attrs;
+	Separator* sep_2;
+	ToolButton* btn_mesh_vertices;
+	ToolButton* btn_mesh_edges;
+	ToolButton* btn_mesh_loops;
+	ToolButton* btn_mesh_faces;
+	Separator* sep_3;
+	MenuButton* handle_menu;
+	MenuButton* attr_menu;
+
+	EditorNode* editor;
+
+	void _edit_mode_changed(int p_idx);
+	void _edit_element_changed(int p_idx);
+
+protected:
+	void _notification(int p_what);
+	static void _bind_methods();
 public:
-    EditorPluginBMesh(EditorNode *editor);
+
+	BMesh* get_edited_mesh() { return mesh; }
+	static BMesh3DGizmoPlugin* singleton;
+	virtual bool has_main_screen() const override { return false; }
+	virtual bool forward_spatial_gui_input(Camera3D* p_camera, Ref<InputEvent> const& p_event) override;
+	virtual bool handles(Object* p_object) const override;
+	virtual void edit(Object* p_object) override;
+	virtual void make_visible(bool p_visible) override;
+
+
+
+	BMeshEditorPlugin(EditorNode *editor);
 };
 
 #endif // BMESH_GIZMOS_H

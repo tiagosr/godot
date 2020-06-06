@@ -13,7 +13,7 @@ void register_bmesh_types() {
 	ClassDB::register_class<BMeshAttributeDefinition>();
 
 #ifdef TOOLS_ENABLED
-	EditorPlugins::add_by_type<EditorPluginBMesh>();
+	EditorPlugins::add_by_type<BMeshEditorPlugin>();
 #endif
 }
 
