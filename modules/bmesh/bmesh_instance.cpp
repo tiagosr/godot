@@ -154,6 +154,13 @@ AABB BMeshInstance3D::get_aabb() const {
 	return AABB();
 }
 
+Vector<Face3> BMeshInstance3D::get_faces(uint32_t p_usage_flags) const {
+	if (mesh.is_valid()) {
+		return mesh->collect_faces();
+	}
+	return Vector<Face3>();
+}
+
 BMeshInstance3D::BMeshInstance3D() {
 }
 

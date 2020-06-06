@@ -135,60 +135,80 @@ void BMesh::_update() const {
 	Array arrays;
 	const_cast<BMesh*>(this)->_create_mesh_arrays(arrays);
 
-	RenderingServer::get_singleton()->mesh_clear(rid);
+	const_cast<BMesh*>(this)->clear_surfaces();
 
 	size_t mc = mc = arrays.size();
-	index_array_len.resize(mc);
 
 	for (size_t mi = 0; mi < mc; ++mi) {
 		Array arr = arrays[mi];
 
 		PackedVector3Array points = arr[RS::ARRAY_VERTEX];
-		aabb = AABB();
-
-		size_t pc = points.size();
-		ERR_FAIL_COND(pc == 0);
-
-		Vector3 const* r = points.ptr();
-		for (size_t i = 0; i < pc; ++i) {
-			if (i == 0) {
-				aabb.position = r[i];
-			} else {
-				aabb.expand_to(r[i]);
-			}
-		}
-
 		Vector<int> indices = arr[RS::ARRAY_INDEX];
 
 		if (flip_faces) {
 			PackedVector3Array normals = arr[RS::ARRAY_NORMAL];
-			if (normals.size() && indices.size()) {
+			if (normals.size()) {
 				size_t nc = normals.size();
 				Vector3* nw = normals.ptrw();
 				for (size_t i = 0; i < nc; ++i) {
 					// invert normals
 					nw[i] = -nw[i];
 				}
-
+				arr[RS::ARRAY_NORMAL] = normals;
+			}
+			if (indices.size()) {
 				size_t ic = indices.size();
 				int* ni = indices.ptrw();
 				for (size_t i = 0; i < ic; i += 3) {
-					SWAP(nw[i + 0], nw[i + 1]);
+					SWAP(ni[i + 0], ni[i + 1]);
 				}
-				arr[RS::ARRAY_NORMAL] = normals;
+				arr[RS::ARRAY_INDEX] = indices;
 			}
 		}
 
-		array_len = pc;
-
-		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(rid, (RenderingServer::PrimitiveType)primitive_type, arr);
-		RenderingServer::get_singleton()->mesh_surface_set_material(rid, mi, ((materials.size() < mi) || materials[mi].is_null()) ? RID() : materials[mi]->get_rid());
+		if (!points.empty()) {
+			const_cast<BMesh*>(this)->add_surface_from_arrays(primitive_type, arr);
+		}
 	}
 
 	pending_update_request = false;
 
 	clear_cache();
 	const_cast<BMesh *>(this)->emit_changed();
+}
+
+Vector<Face3> BMesh::collect_faces() const {
+	Vector<Face3> collected;
+	size_t faces_count = faces.size();
+	size_t collected_count = faces_count;
+	collected.resize(collected_count);
+
+	for (size_t fi = 0, ti = 0; fi < faces_count; ++fi) {
+		if (ti >= collected_count) {
+			// low-ball number of triangles from number of faces remaining
+			collected_count += faces_count - fi;
+			collected.resize(collected_count);
+		}
+		Ref<BMeshLoop> loop = faces[fi]->loop;
+		collected.write[ti].vertex[0] = loop->vert->point; loop = loop->next;
+		collected.write[ti].vertex[1] = loop->vert->point; loop = loop->next;
+		collected.write[ti].vertex[2] = loop->vert->point;
+		++ti;
+		if (faces[fi]->vertcount == 4) {
+			if (ti >= collected_count) {
+				// if we get here, it should be
+				// just an extra face to add
+				collected_count++;
+				collected.resize(collected_count);
+			}
+			collected.write[ti].vertex[0] = loop->vert->point; loop = loop->next;
+			collected.write[ti].vertex[1] = loop->vert->point; loop = loop->next;
+			collected.write[ti].vertex[2] = loop->vert->point;
+			++ti;
+		}
+	}
+
+	return collected;
 }
 
 inline void BMesh::set_vertex(int p_idx, Vector3 const & p_vec) {
@@ -273,12 +293,10 @@ Ref<BMeshFace> BMesh::add_face(Vector<Ref<BMeshVertex>> const & fVerts) {
 	return f;
 }
 
-BMesh::BMesh() {
+BMesh::BMesh() : ArrayMesh() {
 	flip_faces = false;
-	rid = RenderingServer::get_singleton()->mesh_create();
 	primitive_type = Mesh::PRIMITIVE_TRIANGLES;
-
-	pending_update_request = true;
+	pending_update_request = false;
 }
 
 BMesh::~BMesh() {
@@ -472,84 +490,68 @@ inline Ref<Material> BMesh::get_material() const {
 
 int BMesh::get_surface_count() const {
 	if (pending_update_request) { _update(); }
-	return index_array_len.size();
+	return ArrayMesh::get_surface_count();
 }
 
 int BMesh::surface_get_array_len(int surface) const {
-	ERR_FAIL_INDEX_V(surface, 1, -1);
 	if (pending_update_request) { _update(); }
-	return array_len;
+	return ArrayMesh::surface_get_array_len(surface);
 }
 
 int BMesh::surface_get_array_index_len(int surface) const {
-	ERR_FAIL_INDEX_V(surface, index_array_len.size(), -1);
 	if (pending_update_request) { _update(); }
-	return index_array_len[surface];
+	return ArrayMesh::surface_get_array_index_len(surface);
 }
 
 Array BMesh::surface_get_arrays(int surface) const {
-	ERR_FAIL_INDEX_V(surface, index_array_len.size(), Array());
 	if (pending_update_request) { _update(); }
-	return RenderingServer::get_singleton()->mesh_surface_get_arrays(rid, surface);
+	return ArrayMesh::surface_get_arrays(surface);
 }
 
 Array BMesh::surface_get_blend_shape_arrays(int p_surface) const {
-	return Array(); // not currently supported
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::surface_get_blend_shape_arrays(p_surface);
 }
 
 Dictionary BMesh::surface_get_lods(int surface) const {
-	return Dictionary(); // not currently supported
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::surface_get_lods(surface);
 }
 
 uint32_t BMesh::surface_get_format(int surface) const {
-	ERR_FAIL_INDEX_V(surface, index_array_len.size(), 0);
-	bool has_uv1 = has_vertex_attribute("uv");
-	bool has_uv2 = has_vertex_attribute("uv2");
-	bool has_normal = has_vertex_attribute("normal");
-	bool has_tangent = has_vertex_attribute("tangent");
-
-	uint32_t uv_flags = (has_uv1 ? RS::ARRAY_FORMAT_TEX_UV : 0) | (has_uv2 ? RS::ARRAY_FORMAT_TEX_UV2 : 0);
-	uint32_t normal_tangent_flags = (has_normal ? RS::ARRAY_FORMAT_NORMAL : 0) |(has_tangent ? RS::ARRAY_FORMAT_TANGENT : 0);
-	return RS::ARRAY_FORMAT_VERTEX | normal_tangent_flags | uv_flags | RS::ARRAY_FORMAT_INDEX | RS::ARRAY_COMPRESS_DEFAULT;
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::surface_get_format(surface);
 }
 
 Mesh::PrimitiveType BMesh::surface_get_primitive_type(int surface) const {
-	return primitive_type;
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::surface_get_primitive_type(surface);
 }
 
-void BMesh::surface_set_material(int surface, Ref<Material> const & material) {
-	if (materials.size() <= surface) {
-		materials.resize(surface+1);
-	}
-	materials.set(0, material);
-	if (!pending_update_request) {
-		RenderingServer::get_singleton()->mesh_surface_set_material(rid, surface, material.is_null() ? RID() : material->get_rid());
-		_change_notify();
-		emit_changed();
-	}
-}
 
 Ref<Material> BMesh::surface_get_material(int surface) const {
-	ERR_FAIL_INDEX_V(surface, materials.size(), nullptr);
-	return materials[surface];
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::surface_get_material(surface);
 }
 
 int BMesh::get_blend_shape_count() const {
-	return 0;
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::get_blend_shape_count();
 }
 
 StringName BMesh::get_blend_shape_name(int p_index) const {
-	return StringName();
+	if (pending_update_request) { _update(); }
+	return ArrayMesh::get_blend_shape_name(p_index);
 }
 
 AABB BMesh::get_aabb() const {
 	if (pending_update_request) { _update(); }
-	return aabb;
+	return ArrayMesh::get_aabb();
 }
 
 RID BMesh::get_rid() const {
 	if (pending_update_request) { _update(); }
-	return rid;
+	return ArrayMesh::get_rid();
 }
 
 size_t BMesh::get_num_tris() const {

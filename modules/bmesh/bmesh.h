@@ -213,22 +213,14 @@ public:
 		: name(name), baseType(baseType), dimensions(dimensions), defaultValue(defaultValue) { }
 };
 
-class BMesh : public Mesh {
-    GDCLASS(BMesh, Mesh);
+class BMesh : public ArrayMesh {
+    GDCLASS(BMesh, ArrayMesh);
 
 protected:
 	RID rid;
 	Mesh::PrimitiveType primitive_type;
 
-	Vector<Ref<Material>> materials;
-
-	mutable AABB aabb;
-	AABB custom_aabb;
-
 	bool flip_faces;
-
-	mutable size_t array_len;
-	mutable PackedInt32Array index_array_len;
 
 	mutable bool pending_update_request;
 
@@ -299,6 +291,8 @@ protected:
 	}
 
 public:
+
+	Vector<Face3> collect_faces() const;
 
 	Vector<Ref<BMeshVertex>> const& get_vertices() const { return vertices; }
 	Vector<Ref<BMeshEdge>> const& get_edges() const { return edges; }
@@ -425,7 +419,6 @@ public:
 	virtual Dictionary surface_get_lods(int surface) const override;
 	virtual uint32_t surface_get_format(int surface) const override;
 	virtual Mesh::PrimitiveType surface_get_primitive_type(int surface) const override;
-	virtual void surface_set_material(int surface, Ref<Material> const& material) override;
 	virtual Ref<Material> surface_get_material(int surface) const override;
 	virtual int get_blend_shape_count() const override;
 	virtual StringName get_blend_shape_name(int p_index) const override;

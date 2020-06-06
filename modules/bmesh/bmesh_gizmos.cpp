@@ -87,6 +87,73 @@ void BMeshEditorPlugin::make_visible(bool p_visible) {
 BMeshEditorPlugin::BMeshEditorPlugin(EditorNode* editor) {
 	Ref<BMesh3DGizmoPlugin> gizmo_plugin(memnew(BMesh3DGizmoPlugin));
 	Node3DEditor::get_singleton()->add_gizmo_plugin(gizmo_plugin);
+
+	sep_1 = memnew(VSeparator);
+	sep_1->hide();
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(sep_1);
+
+	btn_mesh_edit_pos = memnew(ToolButton);
+	btn_mesh_edit_pos->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+	btn_mesh_edit_pos->set_toggle_mode(true);
+	btn_mesh_edit_pos->set_focus_mode(Control::FOCUS_NONE);
+	btn_mesh_edit_pos->hide();
+	btn_mesh_edit_pos->set_tooltip(TTR("Edit vertex positions"));
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(btn_mesh_edit_pos);
+
+	btn_mesh_edit_attrs = memnew(ToolButton);
+	btn_mesh_edit_attrs->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+	btn_mesh_edit_attrs->set_toggle_mode(true);
+	btn_mesh_edit_attrs->set_focus_mode(Control::FOCUS_NONE);
+	btn_mesh_edit_attrs->hide();
+	btn_mesh_edit_attrs->set_tooltip(TTR("Edit vertex attributes"));
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(btn_mesh_edit_attrs);
+
+	sep_2 = memnew(VSeparator);
+	sep_2->hide();
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(sep_2);
+
+	btn_mesh_vertices = memnew(ToolButton);
+	btn_mesh_vertices->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+	btn_mesh_vertices->set_toggle_mode(true);
+	btn_mesh_vertices->set_focus_mode(Control::FOCUS_NONE);
+	btn_mesh_vertices->hide();
+	btn_mesh_vertices->set_tooltip(TTR("Edit vertices"));
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(btn_mesh_vertices);
+
+	btn_mesh_edges = memnew(ToolButton);
+	btn_mesh_edges->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+	btn_mesh_edges->set_toggle_mode(true);
+	btn_mesh_edges->set_focus_mode(Control::FOCUS_NONE);
+	btn_mesh_edges->hide();
+	btn_mesh_edges->set_tooltip(TTR("Edit edges"));
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(btn_mesh_edges);
+
+	btn_mesh_loops = memnew(ToolButton);
+	btn_mesh_loops->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+	btn_mesh_loops->set_toggle_mode(true);
+	btn_mesh_loops->set_focus_mode(Control::FOCUS_NONE);
+	btn_mesh_loops->hide();
+	btn_mesh_loops->set_tooltip(TTR("Edit loops"));
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(btn_mesh_loops);
+
+	btn_mesh_faces = memnew(ToolButton);
+	btn_mesh_faces->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+	btn_mesh_faces->set_toggle_mode(true);
+	btn_mesh_faces->set_focus_mode(Control::FOCUS_NONE);
+	btn_mesh_faces->hide();
+	btn_mesh_faces->set_tooltip(TTR("Edit faces"));
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(btn_mesh_faces);
+
+	sep_3 = memnew(VSeparator);
+	sep_3->hide();
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(sep_3);
+
+
+	handle_menu = memnew(MenuButton);
+	handle_menu->set_text(TTR("Options"));
+	handle_menu->hide();
+	Node3DEditor::get_singleton()->add_control_to_menu_panel(handle_menu);
+
 }
 
 bool BMesh3DGizmoPlugin::has_gizmo(Node3D* p_spatial) {
@@ -111,6 +178,10 @@ void BMesh3DGizmoPlugin::redraw(EditorNode3DGizmo * p_gizmo) {
 	BMesh *mesh = instance->get_mesh().ptr();
 
 	p_gizmo->clear();
+
+	if (!mesh) {
+		return;
+	}
 
 	Ref<Material> handles_material = get_material("handles");
 

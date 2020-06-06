@@ -11,6 +11,7 @@ void register_bmesh_types() {
 	ClassDB::register_class<BMeshFace>();
 	ClassDB::register_class<BMesh>();
 	ClassDB::register_class<BMeshAttributeDefinition>();
+	ClassDB::register_class<BMeshInstance3D>();
 
 #ifdef TOOLS_ENABLED
 	EditorPlugins::add_by_type<BMeshEditorPlugin>();
