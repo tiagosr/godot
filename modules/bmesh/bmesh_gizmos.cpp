@@ -191,7 +191,7 @@ void BMesh3DGizmoPlugin::redraw(EditorNode3DGizmo * p_gizmo) {
 
 	Vector<Ref<BMeshVertex>> const& vertices = mesh->get_vertices();
 	Vector<Ref<BMeshEdge>> const& edges = mesh->get_edges();
-	Vector<Ref<BMeshFace>> const& faces = mesh->get_faces();
+	//Vector<Ref<BMeshFace>> const& faces = mesh->get_faces();
 
 	PackedVector3Array unselectedEdgeLines;
 	PackedVector3Array selectedEdgeLines;
@@ -206,6 +206,8 @@ void BMesh3DGizmoPlugin::redraw(EditorNode3DGizmo * p_gizmo) {
 		for (size_t i = 0, c = selected_loop_indices.size(); i < c; ++i) {
 			
 		}
+		break;
+	default:
 		break;
 	}
 
@@ -240,6 +242,8 @@ void BMesh3DGizmoPlugin::redraw(EditorNode3DGizmo * p_gizmo) {
 		p_gizmo->add_collision_triangles(trimesh);
 		break;
 	}
+	default:
+		break;
 	}
 
 	if (p_gizmo->is_selected()) {
@@ -277,8 +281,8 @@ void BMesh3DGizmoPlugin::redraw(EditorNode3DGizmo * p_gizmo) {
 }
 
 String BMesh3DGizmoPlugin::get_handle_name(EditorNode3DGizmo const * p_gizmo, int p_idx) const {
-	BMeshInstance3D* instance = Object::cast_to<BMeshInstance3D>(p_gizmo->get_spatial_node());
-	BMesh *mesh = instance->get_mesh().ptr();
+	//BMeshInstance3D* instance = Object::cast_to<BMeshInstance3D>(p_gizmo->get_spatial_node());
+	//BMesh *mesh = instance->get_mesh().ptr();
 	switch (edit_mode) {
 	case POSITIONS:
 		switch (element_mode) {
@@ -295,22 +299,22 @@ String BMesh3DGizmoPlugin::get_handle_name(EditorNode3DGizmo const * p_gizmo, in
 		switch (element_mode) {
 		case VERTICES:
 		{
-			Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_vertex_attributes();
+			//Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_vertex_attributes();
 			return TTR("Vertex #{i} attribute {a}").format(p_idx, "{i}").format(attribute_name, "{a}");
 		}
 		case EDGES:
 		{
-			Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_edge_attributes();
+			//Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_edge_attributes();
 			return TTR("Edge #{i} attribute {a}").format(p_idx, "{i}").format(attribute_name, "{a}");
 		}
 		case LOOPS:
 		{
-			Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_loop_attributes();
+			//Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_loop_attributes();
 			return TTR("Loop #{i} attribute {a}").format(p_idx, "{i}").format(attribute_name, "{a}");;
 		}
 		case FACES:
 		{
-			Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_face_attributes();
+			//Vector<Ref<BMeshAttributeDefinition>> const& attrs = mesh->get_face_attributes();
 			return TTR("Face #{i} attribute {a}").format(p_idx, "{i}").format(attribute_name, "{a}");;
 		}
 		}
@@ -326,20 +330,25 @@ Variant BMesh3DGizmoPlugin::get_handle_value(EditorNode3DGizmo * p_gizmo, int p_
 		switch (element_mode) {
 		case VERTICES:
 			return mesh->get_vertex(p_idx);
+		default:
+			return Variant();
 		}
 		break;
 	case ATTRIBUTES:
 		switch (element_mode) {
 		case VERTICES:
 			return mesh->get_vertex_attribute(p_idx, attribute_name);
+		case FACES:
+			//return mesh->get_face_attribute(p_idx, attribute_name);
+		default:
+			return Variant();
 		}
 	}
-	return Variant();
 }
 
 void BMesh3DGizmoPlugin::set_handle(EditorNode3DGizmo * p_gizmo, int p_idx, Camera3D * p_camera, Point2 const & p_point) {
-	BMeshInstance3D* instance = Object::cast_to<BMeshInstance3D>(p_gizmo->get_spatial_node());
-	BMesh *mesh = instance->get_mesh().ptr();
+	//BMeshInstance3D* instance = Object::cast_to<BMeshInstance3D>(p_gizmo->get_spatial_node());
+	//BMesh *mesh = instance->get_mesh().ptr();
 
 }
 
@@ -362,6 +371,8 @@ void BMesh3DGizmoPlugin::commit_handle(EditorNode3DGizmo * p_gizmo, int p_idx, V
 			ur->add_undo_method(mesh, "set_vertex", p_idx, p_restore);
 			ur->commit_action();
 			return;
+		default:
+			return;
 		}
 		break;
 	case ATTRIBUTES:
@@ -375,6 +386,8 @@ void BMesh3DGizmoPlugin::commit_handle(EditorNode3DGizmo * p_gizmo, int p_idx, V
 			ur->add_do_method(mesh, "set_vertex_attribute", p_idx, attribute_name, mesh->get_vertex_attribute(p_idx, attribute_name));
 			ur->add_undo_method(mesh, "set_vertex_attribute", p_idx, attribute_name, p_restore);
 			ur->commit_action();
+			return;
+		default:
 			return;
 		}
 	}

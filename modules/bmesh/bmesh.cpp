@@ -625,7 +625,7 @@ void BMesh::remove_loop(Ref<BMeshLoop> l) {
 	}
 
 	if (l->radial_next == l) {
-		l->edge->loop = nullptr;
+		l->edge->loop = Ref<BMeshLoop>();
 	} else {
 		l->radial_prev->radial_next = l->radial_next;
 		l->radial_next->radial_prev = l->radial_prev;
@@ -634,8 +634,8 @@ void BMesh::remove_loop(Ref<BMeshLoop> l) {
 		}
 	}
 
-	l->next = nullptr;
-	l->prev = nullptr;
+	l->next = Ref<BMeshLoop>();
+	l->prev = Ref<BMeshLoop>();
 
 	loops.erase(l);
 	pending_update_request = true;
@@ -643,10 +643,10 @@ void BMesh::remove_loop(Ref<BMeshLoop> l) {
 
 void BMesh::remove_face(Ref<BMeshFace> f) {
 	Ref<BMeshLoop> l = f->loop;
-	Ref<BMeshLoop> nextL = nullptr;
+	Ref<BMeshLoop> nextL;
 	while (nextL != f->loop) {
 		nextL = l->next;
-		l->face = nullptr;
+		l->face = Ref<BMeshFace>();
 		remove_loop(l);
 		l = nextL;
 	}

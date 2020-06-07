@@ -35,8 +35,10 @@ public:
 	Node* create_convex_collision_node();
 	void create_convex_collision();
 
-	virtual AABB get_aabb() const override;
-	virtual Vector<Face3> get_faces(uint32_t p_usage_flags) const override;
+	// GeometryInstance3D overrides
+	virtual AABB get_aabb() const;
+	virtual Vector<Face3> get_faces(uint32_t p_usage_flags) const;
+	// ~GeometryInstance3D
 
 	BMeshInstance3D();
 	~BMeshInstance3D();

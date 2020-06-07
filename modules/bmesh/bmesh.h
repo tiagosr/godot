@@ -411,19 +411,19 @@ public:
 	Ref<Material> get_material() const;
 
 	// Mesh
-	virtual int get_surface_count() const override;
-	virtual int surface_get_array_len(int surface) const override;
-	virtual int surface_get_array_index_len(int surface) const override;
-	virtual Array surface_get_arrays(int surface) const override;
-	virtual Array surface_get_blend_shape_arrays(int p_surface) const override;
-	virtual Dictionary surface_get_lods(int surface) const override;
-	virtual uint32_t surface_get_format(int surface) const override;
-	virtual Mesh::PrimitiveType surface_get_primitive_type(int surface) const override;
-	virtual Ref<Material> surface_get_material(int surface) const override;
-	virtual int get_blend_shape_count() const override;
-	virtual StringName get_blend_shape_name(int p_index) const override;
-	virtual AABB get_aabb() const override;
-	virtual RID get_rid() const override;
+	virtual int get_surface_count() const;
+	virtual int surface_get_array_len(int surface) const;
+	virtual int surface_get_array_index_len(int surface) const;
+	virtual Array surface_get_arrays(int surface) const;
+	virtual Array surface_get_blend_shape_arrays(int p_surface) const;
+	virtual Dictionary surface_get_lods(int surface) const;
+	virtual uint32_t surface_get_format(int surface) const;
+	virtual Mesh::PrimitiveType surface_get_primitive_type(int surface) const;
+	virtual Ref<Material> surface_get_material(int surface) const;
+	virtual int get_blend_shape_count() const;
+	virtual StringName get_blend_shape_name(int p_index) const;
+	virtual AABB get_aabb() const;
+	virtual RID get_rid() const;
 	// ~Mesh
 
 	size_t get_num_tris() const;

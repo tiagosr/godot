@@ -29,17 +29,19 @@ protected:
 	PackedInt32Array selected_face_indices;
 	PackedInt32Array selected_loop_indices;
 public:
-	virtual bool has_gizmo(Node3D* p_spatial) override;
-	virtual String get_name() const override;
-	virtual int get_priority() const override;
-	virtual bool is_selectable_when_hidden() const override;
 
-	virtual void redraw(EditorNode3DGizmo* p_gizmo) override;
-	virtual String get_handle_name(EditorNode3DGizmo const* p_gizmo, int p_idx) const override;
-	virtual Variant get_handle_value(EditorNode3DGizmo* p_gizmo, int p_idx) const override;
-	virtual void set_handle(EditorNode3DGizmo* p_gizmo, int p_idx, Camera3D* p_camera, Point2 const& p_point) override;
-	virtual void commit_handle(EditorNode3DGizmo* p_gizmo, int p_idx, Variant const& p_restore, bool p_cancel) override;
+	// EditorNode3DGizmo overrides
+	virtual bool has_gizmo(Node3D* p_spatial);
+	virtual String get_name() const;
+	virtual int get_priority() const;
+	virtual bool is_selectable_when_hidden() const;
 
+	virtual void redraw(EditorNode3DGizmo* p_gizmo);
+	virtual String get_handle_name(EditorNode3DGizmo const* p_gizmo, int p_idx) const;
+	virtual Variant get_handle_value(EditorNode3DGizmo* p_gizmo, int p_idx) const;
+	virtual void set_handle(EditorNode3DGizmo* p_gizmo, int p_idx, Camera3D* p_camera, Point2 const& p_point);
+	virtual void commit_handle(EditorNode3DGizmo* p_gizmo, int p_idx, Variant const& p_restore, bool p_cancel);
+	// ~EditorNode3DGizmo overrides
 	BMesh3DGizmoPlugin();
 };
 
@@ -74,12 +76,14 @@ public:
 
 	BMesh* get_edited_mesh() { return mesh; }
 	static BMesh3DGizmoPlugin* singleton;
-	virtual bool has_main_screen() const override { return false; }
-	virtual bool forward_spatial_gui_input(Camera3D* p_camera, Ref<InputEvent> const& p_event) override;
-	virtual bool handles(Object* p_object) const override;
-	virtual void edit(Object* p_object) override;
-	virtual void make_visible(bool p_visible) override;
 
+	// EditorPlugin overrides
+	virtual bool has_main_screen() const { return false; }
+	virtual bool forward_spatial_gui_input(Camera3D* p_camera, Ref<InputEvent> const& p_event);
+	virtual bool handles(Object* p_object) const;
+	virtual void edit(Object* p_object);
+	virtual void make_visible(bool p_visible);
+	// ~EditorPlugin overrides
 
 
 	BMeshEditorPlugin(EditorNode *editor);
